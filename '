@@ -24,7 +24,7 @@ func TestBlockEncoding(t *testing.T) {
     if string(b.Data) == "Hello world" {
         t.Fatalf("your encoding did not work")
     }
-    if b.Hash == "" {
+    if b.GetHash() == "" {
         t.Fatalf("hash missing")
     }
 }
@@ -93,7 +93,7 @@ func TestWritingBlockToFileAndReadingFromIT(t *testing.T) {
     }
 
     path := "./"
-    blockEncoder, err := encoder.NewRSAEncoder(8200)
+    blockEncoder, err := encoder.NewRSAEncoder(4096)
     if err != nil {
         t.Fatalf("encountered an error: %v", err)
     }
@@ -102,7 +102,7 @@ func TestWritingBlockToFileAndReadingFromIT(t *testing.T) {
         t.Fatalf("encountered an error: %v", err)
     }
 
-    filepath := path + string(b.Hash)
+    filepath := path + string(b.GetHash())
 
     if _, err := os.Stat(filepath); errors.Is(err, os.ErrNotExist) {
         t.Fatalf("didn't save it to file :(")
@@ -113,8 +113,8 @@ func TestWritingBlockToFileAndReadingFromIT(t *testing.T) {
         t.Fatalf("error occured: %v", err)
     }
 
-    if readedBlock.Hash != b.Hash {
-        t.Fatalf("Hash is not equal. want %s got %s", b.Hash, readedBlock.Hash)
+    if readedBlock.GetHash() != b.GetHash() {
+        t.Fatalf("Hash is not equal. want %s got %s", b.GetHash(), readedBlock.GetHash())
     }
 
     if err = os.Remove(filepath); err != nil {
