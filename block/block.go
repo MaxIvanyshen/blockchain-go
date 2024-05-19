@@ -73,89 +73,25 @@ func SaveToFile(encoder encoder.Encoder, b *Block, dir string) error {
     if err != nil {
         return fmt.Errorf("encountered an error while saving block to file: %v", err)
     }
-
-    //TODO: encode in parts with same encoder concurrently
-    encodedBlockBytes := buffer.Bytes()
-    done := make(chan interface{})
-    defer close(done)
-
-    blockBytes := bytes.Buffer{}
-
-    chunkStream := chunkGenerator(done, encodedBlockBytes)
-    pipeline := encodeChunk(done, chunkStream, encoder)
-    for chunk := range pipeline {
-        blockBytes.Write(chunk)
-    }
     
-    /*
-
     blockBytes, err := encoder.Encode(buffer.Bytes())
     if err != nil {
         return fmt.Errorf("encountered an errorwhile saving block to file: %v", err)
     }
-    */
 
     if !strings.HasSuffix(dir, "/") {
         dir += "/"
     }
     filepath := dir + string(b.Hash)
     file, err := os.Create(filepath)  
-    n, err := file.Write(blockBytes.Bytes())     
-    if n < blockBytes.Len() {
+    n, err := file.Write(blockBytes)     
+    if n < len(blockBytes) {
         return fmt.Errorf("encountered an error file while saving block to file: %v", NotAllBytesWritten)
     }
 
     file.Close()
 
     return nil
-}
-
-func chunkGenerator(done <-chan interface{}, blockBytes []byte) <-chan []byte {
-    stream := make(chan []byte)
-    
-    go func() {
-        defer close(stream)
-        length := len(blockBytes)
-        for idx := 0; idx <= length; idx += BLOCK_CHUNK_SIZE {
-            var chunk []byte
-            if idx + BLOCK_CHUNK_SIZE < length {
-                chunk = blockBytes[idx:idx+BLOCK_CHUNK_SIZE]
-            } else {
-                chunkSize := length - idx
-                if chunkSize == 0 {
-                    break
-                }
-                chunk = blockBytes[idx:idx+chunkSize]
-            }
-
-            select {
-            case <-done:
-                return
-            case stream<- chunk:
-            }
-        }
-    }()
-
-    return stream
-}
-
-func encodeChunk(done <-chan interface{}, chunkStream <-chan []byte, encoder encoder.Encoder) <-chan []byte {
-    encodedStream := make(chan []byte)
-    go func() {
-       defer close(encodedStream) 
-       for chunk := range chunkStream {
-           encoded, err := encoder.Encode(chunk)
-           if err != nil {
-               panic(err)
-           }
-           select {
-           case <-done:
-               return
-           case encodedStream<-encoded:
-           } 
-       }
-    }()
-    return encodedStream
 }
 
 var NoBlockFileError = errors.New("block file with this name does not exists")
