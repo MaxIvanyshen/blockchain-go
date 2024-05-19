@@ -41,7 +41,7 @@ func (b *Block) Encode() error {
     }
 
     b.Data = encoded
-    b.Hash= blockHash
+    b.Hash = blockHash
 
     return nil
 }
@@ -55,8 +55,6 @@ func DecodeBlockData(block *Block, decoder encoder.Encoder) ([]byte, error) {
 }
 
 var NotAllBytesWritten = errors.New("not all block bytes were written to file")
-
-const BLOCK_CHUNK_SIZE = 128
 
 func SaveToFile(encoder encoder.Encoder, b *Block, dir string) error {
     if b.Hash == "" {
