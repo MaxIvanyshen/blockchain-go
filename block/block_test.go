@@ -1,6 +1,9 @@
 package block
 
 import (
+	"errors"
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/MaxIvanyshen/block-encryption/encoder"
@@ -76,4 +79,32 @@ func TestBlockEncodingAndDecodingWithDifferentEncoder_DataShouldNotBeEqual(t *te
     }
 }
 
+func TestWritingBlockToFile(t *testing.T) {
+    input := "Hello world"
+    rsa, err := encoder.NewRSAEncoder(2048)
+    if err != nil {
+        t.Fatalf("encountered an error: %v", err)
+    }
+    b := New(rsa, NewHeader())
+    b.Data = []byte(input)
+    err = b.Encode()
+    if err != nil {
+        t.Fatalf("encountered an error: %v", err)
+    }
 
+    path := "./"
+    err = SaveToFile(b, path)
+    if err != nil {
+        t.Fatalf("encountered an error: %v", err)
+    }
+
+    filepath := path + string(b.GetHash())
+
+    if _, err := os.Stat(filepath); errors.Is(err, os.ErrNotExist) {
+        t.Fatalf("didnt save it to file :(")
+    }
+
+    if err = os.Remove(filepath); err != nil {
+        fmt.Println("couldn't delete test file")
+    }
+}
