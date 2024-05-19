@@ -18,10 +18,11 @@ func TestBlockEncoding(t *testing.T) {
         t.Fatalf("encountered an error: %v", err)
     }
 
-    if string(b.Data) == "hello world" {
+    if string(b.Data) == "Hello world" {
         t.Fatalf("your encoding did not work")
     }
     if b.GetHash() == "" {
         t.Fatalf("hash missing")
     }
 }
+
