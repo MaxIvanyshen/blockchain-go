@@ -41,6 +41,14 @@ func (b *Block) Encode() error {
     return nil
 }
 
+func DecodeBlockData(block *Block, decoder encoder.Encoder) ([]byte, error) {
+    decoded, err := decoder.Decode(block.Data)
+    if err != nil {
+        return make([]byte, 0), fmt.Errorf("encountered an error while decoding block's data: %v", err)
+    }
+    return decoded, nil
+}
+
 func (b *Block) GetHash() hash {
     return b.hash
 }
