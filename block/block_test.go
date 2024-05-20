@@ -80,7 +80,7 @@ func TestBlockEncodingAndDecodingWithDifferentEncoder_DataShouldNotBeEqual(t *te
 }
 
 func TestWritingBlockToFileAndReadingFromIT(t *testing.T) {
-    input := "Hello world"
+    input := "hello"
     rsa, err := encoder.NewRSAEncoder(2048)
     if err != nil {
         t.Fatalf("encountered an error: %v", err)
@@ -93,7 +93,7 @@ func TestWritingBlockToFileAndReadingFromIT(t *testing.T) {
     }
 
     path := "./"
-    blockEncoder, err := encoder.NewRSAEncoder(5000)
+    blockEncoder, err := encoder.NewRSAEncoder(4100)
     if err != nil {
         t.Fatalf("encountered an error: %v", err)
     }
@@ -115,6 +115,14 @@ func TestWritingBlockToFileAndReadingFromIT(t *testing.T) {
 
     if readedBlock.Hash != b.Hash {
         t.Fatalf("Hash is not equal. want %s got %s", b.Hash, readedBlock.Hash)
+    }
+
+    blockData, err := DecodeBlockData(readedBlock, rsa)
+    if err != nil {
+        t.Fatalf("error occured: %v", err)
+    }
+    if string(blockData) != input {
+        t.Fatalf("Hash is not equal. want %s got %s", input, string(blockData))
     }
 
     if err = os.Remove(filepath); err != nil {
