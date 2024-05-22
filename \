@@ -54,7 +54,9 @@ func TestSavingDataToChainThenReadingFromItsTail(t *testing.T) {
         }
     }    
 
-    err = chain.WriteBytes(data)
+    fmt.Println(len(data))
+
+    err = chain.SaveBytes(data)
     if err != nil {
         t.Fatalf("an error occured: %v", err)
     }
@@ -69,6 +71,6 @@ func TestSavingDataToChainThenReadingFromItsTail(t *testing.T) {
     }
 
     if string(data) != string(read) {
-        t.Fatal("input and output are not equal")
+        t.Fatal("input and output are now equal")
     }
 }

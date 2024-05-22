@@ -48,7 +48,7 @@ func (c *Chain) addBlock(b *block.Block) error {
 
 var ChainSavingError = errors.New("an error occured while saving chain")
 
-func (c *Chain) SaveBytes(data []byte) error {
+func (c *Chain) WriteBytes(data []byte) error {
     blocksCount := int(math.Floor(float64(len(data) / int(c.BlockSize))))
     if len(data) != int(c.BlockSize) {
         blocksCount += 1
