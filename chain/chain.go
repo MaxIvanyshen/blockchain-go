@@ -107,17 +107,6 @@ func (c *Chain) ReadBytes() ([]byte, error) {
     return out, nil
 }
 
-func (c *Chain) ReadTailBytes() ([]byte, error) {
-    if c.Length == 0 {
-        return make([]byte, 0), fmt.Errorf("could now decode chain data: %v", ZeroLengthError)
-    }
-    out, err := block.DecodeBlockData(c.Tail, c.encoder)
-    if err != nil {
-        return make([]byte, 0), fmt.Errorf("could now read tail block data: %v", err)
-    }
-    return out, nil
-}
-
 func writeChunkStream(done <-chan interface{}, data []byte, chunkSize int) <-chan []byte {
     stream := make(chan []byte)
 
