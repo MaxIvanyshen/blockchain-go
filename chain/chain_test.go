@@ -29,8 +29,8 @@ func TestAddingBlockToChain(t *testing.T) {
     } 
 }
 
-func TestSavingDataToChain(t *testing.T) {
-    chainEncoder, err :=  encoder.NewRSAEncoder(3076)
+func TestSavingDataToChainThenReadingFromItsTail(t *testing.T) {
+    chainEncoder, err :=  encoder.NewRSAEncoder(9000)
     if err != nil {
         t.Fatalf("an error occured: %v", err)
     }
@@ -45,16 +45,21 @@ func TestSavingDataToChain(t *testing.T) {
         data[i] = byte(i * 3)
     }    
 
-    blocks, err := chain.SaveToBytes(data)
+    err = chain.SaveBytes(data)
     if err != nil {
         t.Fatalf("an error occured: %v", err)
     }
 
-    if chain.Length != 3 {
+    if chain.Length != 1 {
         t.Fatalf("chain length should be 3 but was %d", chain.Length)
     }
+    
+    read, err := chain.ReadTailBytes()
+    if err != nil {
+        t.Fatalf("an error occured: %v", err)
+    }
 
-    if string(blocks[2]) != string(chain.Tail.Hash) {
-        t.Fatalf("wrong tail hash")
+    if string(data) != string(read) {
+        t.Fatal("input and output are now equal")
     }
 }

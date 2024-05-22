@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 
@@ -48,7 +47,8 @@ func (c *Chain) addBlock(b *block.Block) error {
 
 var ChainSavingError = errors.New("an error occured while saving chain")
 
-func (c *Chain) SaveToBytes(data []byte) ([]hash, error) {
+/*
+func (c *Chain) SaveBytes(data []byte) error {
     blocksCount := int(math.Floor(float64(len(data) / int(c.BlockSize))))
     if len(data) != int(c.BlockSize) {
         blocksCount += 1
@@ -67,7 +67,7 @@ func (c *Chain) SaveToBytes(data []byte) ([]hash, error) {
         b.Data = chunk
         err := c.addBlock(b)
         if err != nil {
-            return make([]hash, 0), fmt.Errorf("%v: could not add block to chain: %v", ChainSavingError, err)
+            return fmt.Errorf("%v: could not add block to chain: %v", ChainSavingError, err)
         }
         blocks = append(blocks, hash(b.Hash))
     }
@@ -78,7 +78,41 @@ func (c *Chain) SaveToBytes(data []byte) ([]hash, error) {
         c.Hash = hash(base64.URLEncoding.EncodeToString(hasher.Sum(nil)))
     }
 
-    return blocks, nil
+    return nil
+
+}
+*/
+
+func (c *Chain) SaveBytes(data []byte) error {
+    header := block.NewHeader()
+    header.Store["chain"] = []byte(c.Hash)
+    b := block.New(c.encoder, header) 
+    b.Data = data
+    err := c.addBlock(b)
+    if err != nil {
+        return fmt.Errorf("%v: could not add block to chain: %v", ChainSavingError, err)
+    }
+
+    if c.Hash == "" {
+        hasher := sha256.New()
+        hasher.Write([]byte(string(c.Tail.Data) + strconv.Itoa(int(c.Timestamp))))
+        c.Hash = hash(base64.URLEncoding.EncodeToString(hasher.Sum(nil)))
+    }
+
+    return nil
+}
+
+var ZeroLengthError = errors.New("the chain's length is 0")
+
+func (c *Chain) ReadTailBytes() ([]byte, error) {
+    if c.Length == 0 {
+        return make([]byte, 0), fmt.Errorf("could now decode chain data: %v", ZeroLengthError)
+    }
+    out, err := block.DecodeBlockData(c.Tail, c.encoder)
+    if err != nil {
+        return make([]byte, 0), fmt.Errorf("could now read tail block data: %v", err)
+    }
+    return out, nil
 }
 
 func writeChunkStream(done <-chan interface{}, data []byte, chunkSize int) <-chan []byte {
