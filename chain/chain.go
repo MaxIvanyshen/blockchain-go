@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"math"
 
 	"github.com/MaxIvanyshen/block-encryption/encoder"
 )
@@ -47,7 +48,6 @@ func (c *Chain) addBlock(b *block.Block) error {
 
 var ChainSavingError = errors.New("an error occured while saving chain")
 
-/*
 func (c *Chain) SaveBytes(data []byte) error {
     blocksCount := int(math.Floor(float64(len(data) / int(c.BlockSize))))
     if len(data) != int(c.BlockSize) {
@@ -79,30 +79,33 @@ func (c *Chain) SaveBytes(data []byte) error {
     }
 
     return nil
-
-}
-*/
-
-func (c *Chain) SaveBytes(data []byte) error {
-    header := block.NewHeader()
-    header.Store["chain"] = []byte(c.Hash)
-    b := block.New(c.encoder, header) 
-    b.Data = data
-    err := c.addBlock(b)
-    if err != nil {
-        return fmt.Errorf("%v: could not add block to chain: %v", ChainSavingError, err)
-    }
-
-    if c.Hash == "" {
-        hasher := sha256.New()
-        hasher.Write([]byte(string(c.Tail.Data) + strconv.Itoa(int(c.Timestamp))))
-        c.Hash = hash(base64.URLEncoding.EncodeToString(hasher.Sum(nil)))
-    }
-
-    return nil
 }
 
 var ZeroLengthError = errors.New("the chain's length is 0")
+
+func (c *Chain) ReadBytes() ([]byte, error) {
+    if c.Length == 0 {
+        return make([]byte, 0), fmt.Errorf("could now decode chain data: %v", ZeroLengthError)
+    }
+    out := make([]byte, 0)
+
+    chunks := make([][]byte, 0)
+    current := c.Tail    
+    for i := 0; current != nil; i++ {
+        chunk, err := block.DecodeBlockData(current, c.encoder)
+        if err != nil {
+            return out, fmt.Errorf("could not decode chain data because of error while reading block: %v", err)
+        }
+        chunks = append(chunks, chunk)
+        current = current.Parent
+    }
+
+    for i := len(chunks) - 1; i >= 0; i-- {
+        out = append(out, chunks[i]...)
+    }
+
+    return out, nil
+}
 
 func (c *Chain) ReadTailBytes() ([]byte, error) {
     if c.Length == 0 {
