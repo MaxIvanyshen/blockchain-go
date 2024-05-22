@@ -33,9 +33,8 @@ var UnableToAddBlockToChainError = errors.New("unable to add block to chain")
 
 func (c *Chain) addBlock(b *block.Block) error {
     if c.Length != 0 {
-        b.ParentHash = c.Tail.Hash
+        b.Parent = c.Tail
     }
-
     err := b.Encode()
     if err != nil {
         return fmt.Errorf("%v: %v", UnableToAddBlockToChainError, err)
@@ -49,7 +48,7 @@ func (c *Chain) addBlock(b *block.Block) error {
 
 var ChainSavingError = errors.New("an error occured while saving chain")
 
-func (c *Chain) SaveBytes(data []byte) ([]hash, error) {
+func (c *Chain) SaveToBytes(data []byte) ([]hash, error) {
     blocksCount := int(math.Floor(float64(len(data) / int(c.BlockSize))))
     if len(data) != int(c.BlockSize) {
         blocksCount += 1
@@ -57,7 +56,7 @@ func (c *Chain) SaveBytes(data []byte) ([]hash, error) {
 
     done := make(chan interface{})
     defer close(done)
-    chunkStream := chunkStream(done, data, int(c.BlockSize))
+    chunkStream := writeChunkStream(done, data, int(c.BlockSize))
 
     blocks := make([]hash, 0)
 
@@ -82,7 +81,7 @@ func (c *Chain) SaveBytes(data []byte) ([]hash, error) {
     return blocks, nil
 }
 
-func chunkStream(done <-chan interface{}, data []byte, chunkSize int) <-chan []byte {
+func writeChunkStream(done <-chan interface{}, data []byte, chunkSize int) <-chan []byte {
     stream := make(chan []byte)
 
     go func() {

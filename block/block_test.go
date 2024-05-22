@@ -121,6 +121,7 @@ func TestWritingBlockToFileAndReadingFromIT(t *testing.T) {
     if err != nil {
         t.Fatalf("error occured: %v", err)
     }
+
     if string(blockData) != input {
         t.Fatalf("Hash is not equal. want %s got %s", input, string(blockData))
     }

@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MaxIvanyshen/block-encryption/encoder"
 )
@@ -20,19 +22,21 @@ type Block struct {
     Header *Header
     Data []byte
     Hash hash
-    ParentHash hash
+    Parent *Block
+    timestamp int64
 }
 
 func New(encoder encoder.Encoder, header *Header) *Block {
     return &Block {
         encoder: encoder,
         Header: header,
+        timestamp: time.Now().Unix(),
     }
 }
 
 func (b *Block) Encode() error {
     hasher := sha256.New()
-    hasher.Write([]byte(string(b.Data) + string(b.ParentHash)))
+    hasher.Write([]byte(string(b.Data) + strconv.Itoa(int(b.timestamp))))
     blockHash := hash(base64.URLEncoding.EncodeToString(hasher.Sum(nil)))
 
     encoded, err := b.encoder.Encode(b.Data)
