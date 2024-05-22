@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"math"
 
 	"github.com/MaxIvanyshen/block-encryption/encoder"
 )
@@ -17,7 +18,7 @@ type hash string
 type Chain struct {
     encoder encoder.Encoder
     Length uint
-    blockSize uint
+    BlockSize uint
     Tail *block.Block
     Hash hash
     Timestamp int64
@@ -25,7 +26,7 @@ type Chain struct {
 
 func New(encoder encoder.Encoder, blockSize uint) *Chain {
     timestamp := time.Now().Unix()
-    return &Chain{encoder: encoder, blockSize: blockSize, Timestamp: timestamp}
+    return &Chain{encoder: encoder, BlockSize: blockSize, Timestamp: timestamp}
 }
 
 var UnableToAddBlockToChainError = errors.New("unable to add block to chain")
@@ -48,18 +49,28 @@ func (c *Chain) addBlock(b *block.Block) error {
 var ChainSavingError = errors.New("an error occured while saving chain")
 
 func (c *Chain) WriteBytes(data []byte) error {
+
+    /*
+    blocksCount := int(math.Floor(float64(len(data) / int(c.BlockSize))))
+    if len(data) != int(c.BlockSize) {
+        blocksCount += 1
+    }
+    */
+
     done := make(chan interface{})
     defer close(done)
-    chunkStream := writeChunkStream(done, data, int(c.blockSize))
+    chunkStream := writeChunkStream(done, data, int(c.BlockSize))
 
+    //TODO: rethink how I make chain hash
     if c.Hash == "" {
         hasher := sha256.New()
-        hasher.Write([]byte(strconv.Itoa(int(c.blockSize)) + strconv.Itoa(int(c.Timestamp))))
+        hasher.Write([]byte(string(c.Tail.Data) + strconv.Itoa(int(c.Timestamp))))
         c.Hash = hash(base64.URLEncoding.EncodeToString(hasher.Sum(nil)))
     }
 
     for chunk := range chunkStream {
         header := block.NewHeader()
+        //TODO: rethink how I make chain hash
         header.Store["chain"] = []byte(c.Hash)
         b := block.New(c.encoder, header) 
         b.Data = chunk
