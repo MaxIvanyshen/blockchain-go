@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/MaxIvanyshen/block-encryption/encoder"
@@ -73,6 +74,55 @@ func (c *Chain) WriteBytes(data []byte) error {
 }
 
 var ZeroLengthError = errors.New("the chain's length is 0")
+
+type chunk struct {
+    bytes []byte
+    idx int
+}
+
+func (c *Chain) ReadBytesInChunks() ([]byte, error) {
+    if c.Length == 0 {
+        return make([]byte, 0), fmt.Errorf("could now decode chain data: %v", ZeroLengthError)
+    }
+    out := make([]byte, 0)
+
+    chunks := make([]chunk, 0)
+    current := c.Tail    
+
+    var wg sync.WaitGroup
+
+    for i := 0; current != nil; i++ {
+        wg.Add(1)
+        go func(current *block.Block) {
+                defer wg.Done()
+                decoded, err := block.DecodeBlockData(current, c.encoder)
+                if err != nil {
+                    panic(err)
+                }
+
+                chunks = append(chunks, chunk{bytes: decoded, idx: i})
+        }(current)
+
+        current = current.Parent
+    }
+
+    wg.Wait()
+
+    for i := len(chunks); i >= 0; i-- {
+        out = append(out, findChunk(chunks, i)...)
+    }
+
+    return out, nil
+}
+
+func findChunk(chunks []chunk, neededIdx int) []byte {
+    for i := 0; i < len(chunks); i++ {
+        if chunks[i].idx == neededIdx {
+            return chunks[i].bytes
+        }
+    }
+    return make([]byte, 0)
+}
 
 func (c *Chain) ReadBytes() ([]byte, error) {
     if c.Length == 0 {

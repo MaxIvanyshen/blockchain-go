@@ -2,7 +2,6 @@ package chain
 
 import (
 	"blockchain/block"
-	"fmt"
 	"testing"
 
 	"github.com/MaxIvanyshen/block-encryption/encoder"
@@ -30,7 +29,7 @@ func TestAddingBlockToChain(t *testing.T) {
     } 
 }
 
-func TestSavingDataToChainThenReadingFromItsTail(t *testing.T) {
+func TestSavingDataToChainThenReadingFromIt(t *testing.T) {
     chainEncoder, err :=  encoder.NewRSAEncoder(3100)
     if err != nil {
         t.Fatalf("an error occured: %v", err)
@@ -64,6 +63,49 @@ func TestSavingDataToChainThenReadingFromItsTail(t *testing.T) {
     }
     
     read, err := chain.ReadBytes()
+    if err != nil {
+        t.Fatalf("an error occured: %v", err)
+    }
+
+    if string(data) != string(read) {
+        t.Fatal("input and output are not equal")
+    }
+}
+
+func TestSavingDataToChainThenReadingFromItInChunks(t *testing.T) {
+    chainEncoder, err :=  encoder.NewRSAEncoder(3100)
+    if err != nil {
+        t.Fatalf("an error occured: %v", err)
+    }
+    
+    chain := New(chainEncoder, 256)
+    if chain.Length != 0 {
+        t.Fatalf("chain length should be 0 after initialization but was %d", chain.Length)
+    } 
+
+    data := make([]byte, 0)
+    str := []string{"world"," hello"}
+
+    for i := 0; i < 520; {
+        if i % 2 == 0 {
+            data = append(data, []byte(str[0])...)
+            i += len(str[0])
+        } else {
+            data = append(data, []byte(str[1])...)
+            i += len(str[1]) - 1
+        }
+    }    
+
+    err = chain.WriteBytes(data)
+    if err != nil {
+        t.Fatalf("an error occured: %v", err)
+    }
+
+    if chain.Length != 3 {
+        t.Fatalf("chain length should be 3 but was %d", chain.Length)
+    }
+    
+    read, err := chain.ReadBytesInChunks()
     if err != nil {
         t.Fatalf("an error occured: %v", err)
     }
