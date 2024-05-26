@@ -73,81 +73,6 @@ func (c *Chain) WriteBytes(data []byte) error {
     return nil
 }
 
-var ZeroLengthError = errors.New("the chain's length is 0")
-
-type chunk struct {
-    bytes []byte
-    idx int
-}
-
-func (c *Chain) ReadBytesInChunks() ([]byte, error) {
-    if c.Length == 0 {
-        return make([]byte, 0), fmt.Errorf("could now decode chain data: %v", ZeroLengthError)
-    }
-    out := make([]byte, 0)
-
-    chunks := make([]chunk, 0)
-    current := c.Tail    
-
-    var wg sync.WaitGroup
-
-    for i := 0; current != nil; i++ {
-        wg.Add(1)
-        go func(current *block.Block) {
-                defer wg.Done()
-                decoded, err := block.DecodeBlockData(current, c.encoder)
-                if err != nil {
-                    panic(err)
-                }
-
-                chunks = append(chunks, chunk{bytes: decoded, idx: i})
-        }(current)
-
-        current = current.Parent
-    }
-
-    wg.Wait()
-
-    for i := len(chunks); i >= 0; i-- {
-        out = append(out, findChunk(chunks, i)...)
-    }
-
-    return out, nil
-}
-
-func findChunk(chunks []chunk, neededIdx int) []byte {
-    for i := 0; i < len(chunks); i++ {
-        if chunks[i].idx == neededIdx {
-            return chunks[i].bytes
-        }
-    }
-    return make([]byte, 0)
-}
-
-func (c *Chain) ReadBytes() ([]byte, error) {
-    if c.Length == 0 {
-        return make([]byte, 0), fmt.Errorf("could now decode chain data: %v", ZeroLengthError)
-    }
-    out := make([]byte, 0)
-
-    chunks := make([][]byte, 0)
-    current := c.Tail    
-    for current != nil {
-        chunk, err := block.DecodeBlockData(current, c.encoder)
-        if err != nil {
-            return out, fmt.Errorf("could not decode chain data because of error while reading block: %v", err)
-        }
-        chunks = append(chunks, chunk)
-        current = current.Parent
-    }
-
-    for i := len(chunks) - 1; i >= 0; i-- {
-        out = append(out, chunks[i]...)
-    }
-
-    return out, nil
-}
-
 func writeChunkStream(done <-chan interface{}, data []byte, chunkSize int) <-chan []byte {
     stream := make(chan []byte)
 
@@ -172,3 +97,92 @@ func writeChunkStream(done <-chan interface{}, data []byte, chunkSize int) <-cha
 
     return stream
 }
+
+var ZeroLengthError = errors.New("the chain's length is 0")
+
+
+//this function reads data in chain and decodes its chunks in one thread
+func (c *Chain) ReadBytes() ([]byte, error) {
+    if c.Length == 0 {
+        return make([]byte, 0), fmt.Errorf("could now decode chain data: %v", ZeroLengthError)
+    }
+    out := make([]byte, 0)
+
+    chunks := make([][]byte, 0)
+    current := c.Tail    
+    for current != nil {
+        chunk, err := block.DecodeBlockData(current, c.encoder)
+        if err != nil {
+            return out, fmt.Errorf("could not decode chain data because of error while reading block: %v", err)
+        }
+        chunks = append(chunks, chunk)
+        current = current.Parent
+    }
+
+    for i := len(chunks) - 1; i >= 0; i-- {
+        out = append(out, chunks[i]...)
+    }
+
+    return out, nil
+}
+
+/*
+    This structure is used to decode chain data by chunks,
+    specifically to concatenate chunks in the right order
+    and not think of passing around data byte and chunks index
+*/
+type chunk struct {
+    bytes []byte
+    idx int
+}
+
+/*
+    This functions does the same as the previous one, but it decodes chunks 
+    concurrently, which at times appears to be faster. This also makes us
+    later use O(n^2) loop to concatenate all the decoded chunks
+*/
+func (c *Chain) ReadBytesInChunks() ([]byte, error) {
+    if c.Length == 0 {
+        return make([]byte, 0), fmt.Errorf("could now decode chain data: %v", ZeroLengthError)
+    }
+    out := make([]byte, 0)
+
+    chunks := make([]chunk, 0)
+    current := c.Tail    
+
+    var wg sync.WaitGroup
+
+    for i := 0; current != nil; i++ {
+
+        wg.Add(1)
+        go func(current *block.Block) {
+                defer wg.Done()
+                decoded, err := block.DecodeBlockData(current, c.encoder)
+                if err != nil {
+                    panic(err)
+                }
+
+                chunks = append(chunks, chunk{bytes: decoded, idx: i})
+        }(current)
+
+        current = current.Parent
+    }
+
+    wg.Wait()
+
+    for i := len(chunks) - 1; i >= 0; i-- {
+        out = append(out, findChunk(chunks, i)...)
+    }
+
+    return out, nil
+}
+
+func findChunk(chunks []chunk, neededIdx int) []byte {
+    for i := 0; i < len(chunks); i++ {
+        if chunks[i].idx == neededIdx {
+            return chunks[i].bytes
+        }
+    }
+    return make([]byte, 0)
+}
+

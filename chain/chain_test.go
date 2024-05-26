@@ -2,6 +2,7 @@ package chain
 
 import (
 	"blockchain/block"
+	"fmt"
 	"testing"
 
 	"github.com/MaxIvanyshen/block-encryption/encoder"
@@ -113,4 +114,46 @@ func TestSavingDataToChainThenReadingFromItInChunks(t *testing.T) {
     if string(data) != string(read) {
         t.Fatal("input and output are not equal")
     }
+}
+
+func ReadWriteBenchmark() {
+    bench := func(b *testing.B) {
+        chainEncoder, err :=  encoder.NewRSAEncoder(3100)
+        if err != nil {
+            b.Fatalf("an error occured: %v", err)
+        }
+        
+        chain := New(chainEncoder, 256)
+        if chain.Length != 0 {
+            b.Fatalf("chain length should be 0 after initialization but was %d", chain.Length)
+        } 
+
+        data := make([]byte, 0)
+        str := []string{"world"," hello"}
+
+        for i := 0; i < 520; {
+            if i % 2 == 0 {
+                data = append(data, []byte(str[0])...)
+                i += len(str[0])
+            } else {
+                data = append(data, []byte(str[1])...)
+                i += len(str[1]) - 1
+            }
+        }    
+
+        err = chain.WriteBytes(data)
+        if err != nil {
+            b.Fatalf("an error occured: %v", err)
+        }
+
+        for i := 0; i < b.N; i++ {
+
+            _, err := chain.ReadBytes()
+            if err != nil {
+                b.Fatalf("an error occured: %v", err)
+            }
+        }
+    }
+    result := testing.Benchmark(bench)
+    fmt.Println(result.String())
 }
