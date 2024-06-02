@@ -2,8 +2,9 @@ package chain
 
 import (
 	"blockchain/block"
-	"fmt"
 	"testing"
+    //"os"
+    //"errors"
 
 	"github.com/MaxIvanyshen/block-encryption/encoder"
 )
@@ -115,3 +116,56 @@ func TestSavingDataToChainThenReadingFromItInChunks(t *testing.T) {
         t.Fatal("input and output are not equal")
     }
 }
+
+/*
+func TestWritingChainToFiles(t *testing.T) {
+
+    chainEncoder, err :=  encoder.NewRSAEncoder(5000)
+    if err != nil {
+        t.Fatalf("an error occured: %v", err)
+    }
+    
+    chain := New(chainEncoder, 32)
+    if chain.Length != 0 {
+        t.Fatalf("chain length should be 0 after initialization but was %d", chain.Length)
+    } 
+
+    data := make([]byte, 0)
+    str := []string{"world"," hello"}
+
+    for i := 0; i < 520; {
+        if i % 2 == 0 {
+            data = append(data, []byte(str[0])...)
+            i += len(str[0])
+        } else {
+            data = append(data, []byte(str[1])...)
+            i += len(str[1]) - 1
+        }
+    }    
+
+    err = chain.WriteBytes(data)
+    if err != nil {
+        t.Fatalf("an error occured: %v", err)
+    }
+
+    if chain.Length < 9 {
+        t.Fatalf("chain length should be more than 9 but was %d", chain.Length)
+    }
+
+    _, err = chain.SaveToFiles("./chainFiles")
+    if err != nil {
+        t.Fatalf("an error occured: %v", err)
+    }
+
+    files, _ := os.ReadDir("./chainFiles")
+    if len(files) < 9 {
+        t.Fatalf("wrong number of files. want %d got %d", 9, len(files))
+    }
+
+    filepath := "./" + string(chain.Hash) + ".chain"
+
+    if _, err := os.Stat(filepath); errors.Is(err, os.ErrNotExist) {
+        t.Fatalf("didn't save it to file :(")
+    }
+}
+*/

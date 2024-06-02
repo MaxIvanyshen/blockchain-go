@@ -35,7 +35,7 @@ func New(encoder encoder.Encoder, header *Header) *Block {
 func (b *Block) Encode() error {
     hasher := sha256.New()
     hasher.Write([]byte(string(b.Data) + strconv.Itoa(int(b.Timestamp))))
-    blockHash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+    blockHash := hash(base64.URLEncoding.EncodeToString(hasher.Sum(nil)))
 
     encoded, err := b.encoder.Encode(b.Data)
     if err != nil {

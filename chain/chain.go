@@ -4,6 +4,12 @@ import (
 	"blockchain/block"
 	"crypto/sha256"
 	"encoding/base64"
+    /*
+	"bytes"
+	"encoding/gob"
+	"os"
+	"strings"
+    */
 	"errors"
 	"fmt"
 	"strconv"
@@ -19,14 +25,20 @@ type Chain struct {
     encoder encoder.Encoder
     Length uint
     blockSize uint
-    Tail *block.Block
-    Hash hash
+    Tail string
+    Hash string
     Timestamp int64
+    Blocks []string
 }
 
 func New(encoder encoder.Encoder, blockSize uint) *Chain {
     timestamp := time.Now().Unix()
-    return &Chain{encoder: encoder, blockSize: blockSize, Timestamp: timestamp}
+    return &Chain{
+        encoder: encoder,
+        blockSize: blockSize,
+        Timestamp: timestamp,
+        Blocks: make([]string, 0),
+    }
 }
 
 var UnableToAddBlockToChainError = errors.New("unable to add block to chain")
@@ -35,15 +47,26 @@ func (c *Chain) addBlock(b *block.Block) error {
     if c.Length != 0 {
         b.Parent = c.Tail
     }
-    err := b.Encode()
+    c.checkHash()
+    path := "./" + c.Hash //TODO: make path get variable from env
+    err := block.SaveToFile(c.encoder, b, path) 
     if err != nil {
         return fmt.Errorf("%v: %v", UnableToAddBlockToChainError, err)
     }
 
-    c.Tail = b
+    c.Tail = b.Hash
+    c.Blocks = append(c.Blocks, b.Hash)
     c.Length += 1
 
     return nil
+}
+
+func (c *Chain) checkHash() {
+    if c.Hash == "" {
+        hasher := sha256.New()
+        hasher.Write([]byte(strconv.Itoa(int(c.blockSize)) + strconv.Itoa(int(c.Timestamp))))
+        c.Hash = base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+    }
 }
 
 var ChainSavingError = errors.New("an error occured while saving chain")
@@ -53,11 +76,7 @@ func (c *Chain) WriteBytes(data []byte) error {
     defer close(done)
     chunkStream := writeChunkStream(done, data, int(c.blockSize))
 
-    if c.Hash == "" {
-        hasher := sha256.New()
-        hasher.Write([]byte(strconv.Itoa(int(c.blockSize)) + strconv.Itoa(int(c.Timestamp))))
-        c.Hash = hash(base64.URLEncoding.EncodeToString(hasher.Sum(nil)))
-    }
+    c.checkHash()
 
     for chunk := range chunkStream {
         header := block.NewHeader()
@@ -109,14 +128,14 @@ func (c *Chain) ReadBytes() ([]byte, error) {
     out := make([]byte, 0)
 
     chunks := make([][]byte, 0)
-    current := c.Tail    
+    current := getBlock(
     for current != nil {
         chunk, err := block.DecodeBlockData(current, c.encoder)
         if err != nil {
             return out, fmt.Errorf("could not decode chain data because of error while reading block: %v", err)
         }
         chunks = append(chunks, chunk)
-        current = current.Parent
+        current = c.Blocks[i]
     }
 
     for i := len(chunks) - 1; i >= 0; i-- {
@@ -186,3 +205,67 @@ func findChunk(chunks []chunk, neededIdx int) []byte {
     return make([]byte, 0)
 }
 
+var SavingChainError = errors.New("could not save chain to files")
+var NotAllBytesWritten = errors.New("not all chain bytes were written to file")
+
+/*
+func (c *Chain) SaveToFiles(path string) ([]hash, error) {
+    dto := NewChainDTO(c)
+
+    blocks := make([]hash,  c.Length, c.Length)
+
+    current := c.Tail
+    dto.Tail = hash(c.Tail.Hash)
+    
+    if c.Hash == "" {
+        hasher := sha256.New()
+        hasher.Write([]byte(strconv.Itoa(int(c.blockSize)) + strconv.Itoa(int(c.Timestamp))))
+        c.Hash = hash(base64.URLEncoding.EncodeToString(hasher.Sum(nil)))
+    }
+
+    for i := c.Length - 1; current != nil; i-- {
+        err := block.SaveToFile(c.encoder, current, path)
+        if err != nil {
+            return make([]hash, 0), fmt.Errorf(
+                "%v: error while saving block with hash '%s': %v",
+                SavingChainError,
+                current.Hash,
+                err,
+            )
+        }
+        blocks[i] = hash(current.Hash)
+        current = current.Parent
+    }
+
+    buffer := bytes.Buffer{}
+    enc := gob.NewEncoder(&buffer)
+    err := enc.Encode(c))
+    if err != nil {
+        return make([]hash, 0), fmt.Errorf("encountered an error while saving block to file: %v", err)
+    }
+    
+    chainBytes, err := c.encoder.Encode(buffer.Bytes())
+    if err != nil {
+        return make([]hash, 0), fmt.Errorf("encountered an errorwhile saving block to file: %v", err)
+    }
+
+    if !strings.HasSuffix(path, "/") {
+        path += "/"
+    }
+    filepath := path + string(c.Hash) + ".chain"
+    file, err := os.Create(filepath)  
+    n, err := file.Write(chainBytes)     
+    if n < len(chainBytes) {
+        return make([]hash, 0), fmt.Errorf("encountered an error file while saving block to file: %v", block.NotAllBytesWritten)
+    }
+
+    file.Close()
+
+    return blocks, nil
+}
+*/
+
+func (c *Chain) SaveToFiles(path string) error {
+
+    return nil
+}
